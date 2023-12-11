@@ -87,7 +87,11 @@ class CompositeItemExporter:
     def close(self):
         for item_type, file in self.file_mapping.items():
             close_silently(file)
-            shutil.move(tmp_path(self.filename_mapping[item_type]), self.filename_mapping[item_type])
+            filepath = self.filename_mapping[item_type]
+            output_path = os.path.dirname(filepath)
+            if not os.path.exists(output_path):
+                os.makedirs(output_path)
+            shutil.move(tmp_path(filepath), filepath)
             counter = self.counter_mapping[item_type]
             if counter is not None:
                 self.logger.info('{} items exported: {}'.format(item_type, counter.increment() - 1))

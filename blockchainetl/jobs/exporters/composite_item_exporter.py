@@ -20,11 +20,24 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 import logging
+import os
+import shutil
 
 from blockchainetl.atomic_counter import AtomicCounter
 from blockchainetl.exporters import CsvItemExporter, JsonLinesItemExporter
 from blockchainetl.file_utils import get_file_handle, close_silently
 from blockchainetl.jobs.exporters.converters.composite_item_converter import CompositeItemConverter
+
+
+def tmp_path(filename):
+    if filename.startswith('../'):
+        path_list = filename.split('../', 1)
+        return tmp_path(path_list[1])
+    elif filename.startswith('./'):
+        path_list = filename.split('./', 1)
+        return tmp_path(path_list[1])
+    else:
+        return os.path.join("/tmp", filename.lstrip("/"))
 
 
 class CompositeItemExporter:
@@ -42,7 +55,7 @@ class CompositeItemExporter:
 
     def open(self):
         for item_type, filename in self.filename_mapping.items():
-            file = get_file_handle(filename, binary=True)
+            file = get_file_handle(tmp_path(filename), binary=True)
             fields = self.field_mapping.get(item_type)
             self.file_mapping[item_type] = file
             if str(filename).endswith('.json'):
@@ -73,7 +86,8 @@ class CompositeItemExporter:
 
     def close(self):
         for item_type, file in self.file_mapping.items():
-            close_silently(file)
+            close_silently(tmp_path(file))
+            shutil.move(tmp_path(file), file)
             counter = self.counter_mapping[item_type]
             if counter is not None:
                 self.logger.info('{} items exported: {}'.format(item_type, counter.increment() - 1))

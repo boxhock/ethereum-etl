@@ -25,6 +25,7 @@ import csv
 import logging
 import os
 import shutil
+from pathlib import Path
 from time import time
 
 from ethereumetl.csv_utils import set_max_field_size_limit
@@ -92,25 +93,25 @@ def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_s
             output_dir=output_dir,
             partition_dir=partition_dir,
         )
-        os.makedirs(os.path.dirname(blocks_tmp_dir), exist_ok=True)
+        Path(os.path.dirname(blocks_tmp_dir)).mkdir(parents=True, exist_ok=True)
 
         blocks_output_dir = '{output_dir}/blocks{partition_dir}'.format(
             output_dir=output_dir,
             partition_dir=partition_dir,
         )
-        os.makedirs(os.path.dirname(blocks_output_dir), exist_ok=True)
+        Path(os.path.dirname(blocks_output_dir)).mkdir(parents=True, exist_ok=True)
 
         transactions_tmp_dir = '{output_dir}/.tmp/transactions{partition_dir}'.format(
             output_dir=output_dir,
             partition_dir=partition_dir,
         )
-        os.makedirs(os.path.dirname(transactions_tmp_dir), exist_ok=True)
+        Path(os.path.dirname(transactions_tmp_dir)).mkdir(parents=True, exist_ok=True)
 
         transactions_output_dir = '{output_dir}/transactions{partition_dir}'.format(
             output_dir=output_dir,
             partition_dir=partition_dir,
         )
-        os.makedirs(os.path.dirname(transactions_output_dir), exist_ok=True)
+        Path(os.path.dirname(transactions_output_dir)).mkdir(parents=True, exist_ok=True)
 
         blocks_file_format = '{blocks_output_dir}/blocks_{file_name_suffix}.csv'
         blocks_tmp_file = blocks_file_format.format(
@@ -167,13 +168,13 @@ def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_s
                 output_dir=output_dir,
                 partition_dir=partition_dir,
             )
-            os.makedirs(os.path.dirname(token_transfers_tmp_dir), exist_ok=True)
+            Path(os.path.dirname(token_transfers_tmp_dir)).mkdir(parents=True, exist_ok=True)
 
             token_transfers_output_dir = '{output_dir}/token_transfers{partition_dir}'.format(
                 output_dir=output_dir,
                 partition_dir=partition_dir,
             )
-            os.makedirs(os.path.dirname(token_transfers_output_dir), exist_ok=True)
+            Path(os.path.dirname(token_transfers_output_dir)).mkdir(parents=True, exist_ok=True)
 
             token_transfers_file_format = '{token_transfers_output_dir}/token_transfers_{file_name_suffix}.csv'
             token_transfers_tmp_file = token_transfers_file_format.format(
@@ -211,7 +212,7 @@ def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_s
             output_dir=output_dir,
             partition_dir=partition_dir,
         )
-        os.makedirs(os.path.dirname(cache_output_dir), exist_ok=True)
+        Path(os.path.dirname(cache_output_dir)).mkdir(parents=True, exist_ok=True)
 
         transaction_hashes_file = '{cache_output_dir}/transaction_hashes_{file_name_suffix}.csv'.format(
             cache_output_dir=cache_output_dir,
@@ -226,25 +227,25 @@ def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_s
             output_dir=output_dir,
             partition_dir=partition_dir,
         )
-        os.makedirs(os.path.dirname(receipts_tmp_dir), exist_ok=True)
+        Path(os.path.dirname(receipts_tmp_dir)).mkdir(parents=True, exist_ok=True)
 
         receipts_output_dir = '{output_dir}/receipts{partition_dir}'.format(
             output_dir=output_dir,
             partition_dir=partition_dir,
         )
-        os.makedirs(os.path.dirname(receipts_output_dir), exist_ok=True)
+        Path(os.path.dirname(receipts_output_dir)).mkdir(parents=True, exist_ok=True)
 
         logs_tmp_dir = '{output_dir}/.tmp/logs{partition_dir}'.format(
             output_dir=output_dir,
             partition_dir=partition_dir,
         )
-        os.makedirs(os.path.dirname(logs_tmp_dir), exist_ok=True)
+        Path(os.path.dirname(logs_tmp_dir)).mkdir(parents=True, exist_ok=True)
 
         logs_output_dir = '{output_dir}/logs{partition_dir}'.format(
             output_dir=output_dir,
             partition_dir=partition_dir,
         )
-        os.makedirs(os.path.dirname(logs_output_dir), exist_ok=True)
+        Path(os.path.dirname(logs_output_dir)).mkdir(parents=True, exist_ok=True)
 
         receipts_file_format = '{receipts_output_dir}/receipts_{file_name_suffix}.csv'
         receipts_tmp_file = receipts_file_format.format(
@@ -305,13 +306,13 @@ def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_s
             output_dir=output_dir,
             partition_dir=partition_dir,
         )
-        os.makedirs(os.path.dirname(contracts_tmp_dir), exist_ok=True)
+        Path(os.path.dirname(contracts_tmp_dir)).mkdir(parents=True, exist_ok=True)
 
         contracts_output_dir = '{output_dir}/contracts{partition_dir}'.format(
             output_dir=output_dir,
             partition_dir=partition_dir,
         )
-        os.makedirs(os.path.dirname(contracts_output_dir), exist_ok=True)
+        Path(os.path.dirname(contracts_output_dir)).mkdir(parents=True, exist_ok=True)
 
         contracts_file_template = '{contracts_output_dir}/contracts_{file_name_suffix}.csv'
         contracts_tmp_file = contracts_file_template.format(
@@ -366,13 +367,13 @@ def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_s
                 output_dir=output_dir,
                 partition_dir=partition_dir,
             )
-            os.makedirs(os.path.dirname(tokens_tmp_dir), exist_ok=True)
+            Path(os.path.dirname(tokens_tmp_dir)).mkdir(parents=True, exist_ok=True)
 
             tokens_output_dir = '{output_dir}/tokens{partition_dir}'.format(
                 output_dir=output_dir,
                 partition_dir=partition_dir,
             )
-            os.makedirs(os.path.dirname(tokens_output_dir), exist_ok=True)
+            Path(os.path.dirname(tokens_output_dir)).mkdir(parents=True, exist_ok=True)
 
             tokens_file_template = '{tokens_output_dir}/tokens_{file_name_suffix}.csv'
             tokens_tmp_file = tokens_file_template.format(

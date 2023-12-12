@@ -63,6 +63,11 @@ def extract_csv_column_unique(input, output, column):
             output_file.write(row[column] + '\n')
 
 
+def delete_file(filepath):
+    if os.path.isfile(filepath):
+        os.remove(filepath)
+
+
 def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_size):
 
     for batch_start_block, batch_end_block, partition_dir in partitions:
@@ -83,11 +88,23 @@ def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_s
 
         # # # blocks_and_transactions # # #
 
+        blocks_tmp_dir = '{output_dir}/.tmp/blocks{partition_dir}'.format(
+            output_dir=output_dir,
+            partition_dir=partition_dir,
+        )
+        os.makedirs(os.path.dirname(blocks_tmp_dir), exist_ok=True)
+
         blocks_output_dir = '{output_dir}/blocks{partition_dir}'.format(
             output_dir=output_dir,
             partition_dir=partition_dir,
         )
         os.makedirs(os.path.dirname(blocks_output_dir), exist_ok=True)
+
+        transactions_tmp_dir = '{output_dir}/.tmp/transactions{partition_dir}'.format(
+            output_dir=output_dir,
+            partition_dir=partition_dir,
+        )
+        os.makedirs(os.path.dirname(transactions_tmp_dir), exist_ok=True)
 
         transactions_output_dir = '{output_dir}/transactions{partition_dir}'.format(
             output_dir=output_dir,
@@ -95,21 +112,35 @@ def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_s
         )
         os.makedirs(os.path.dirname(transactions_output_dir), exist_ok=True)
 
-        blocks_file = '{blocks_output_dir}/blocks_{file_name_suffix}.csv'.format(
+        blocks_file_format = '{blocks_output_dir}/blocks_{file_name_suffix}.csv'
+        blocks_tmp_file = blocks_file_format.format(
+            blocks_output_dir=blocks_tmp_dir,
+            file_name_suffix=file_name_suffix,
+        )
+        blocks_output_file = blocks_file_format.format(
             blocks_output_dir=blocks_output_dir,
             file_name_suffix=file_name_suffix,
         )
-        transactions_file = '{transactions_output_dir}/transactions_{file_name_suffix}.csv'.format(
+        delete_file(blocks_tmp_file)
+
+        transactions_file_format = '{transactions_output_dir}/transactions_{file_name_suffix}.csv'
+        transactions_tmp_file = transactions_file_format.format(
+            transactions_output_dir=transactions_tmp_dir,
+            file_name_suffix=file_name_suffix,
+        )
+        transactions_output_file = transactions_file_format.format(
             transactions_output_dir=transactions_output_dir,
             file_name_suffix=file_name_suffix,
         )
+        delete_file(transactions_tmp_file)
+
         logger.info('Exporting blocks {block_range} to {blocks_file}'.format(
             block_range=block_range,
-            blocks_file=blocks_file,
+            blocks_file=blocks_tmp_file,
         ))
         logger.info('Exporting transactions from blocks {block_range} to {transactions_file}'.format(
             block_range=block_range,
-            transactions_file=transactions_file,
+            transactions_file=transactions_tmp_file,
         ))
 
         job = ExportBlocksJob(
@@ -118,28 +149,46 @@ def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_s
             batch_size=batch_size,
             batch_web3_provider=ThreadLocalProxy(lambda: get_provider_from_uri(provider_uri, batch=True)),
             max_workers=max_workers,
-            item_exporter=blocks_and_transactions_item_exporter(blocks_file, transactions_file),
-            export_blocks=blocks_file is not None,
-            export_transactions=transactions_file is not None)
+            item_exporter=blocks_and_transactions_item_exporter(blocks_tmp_file, transactions_tmp_file),
+            export_blocks=blocks_tmp_file is not None,
+            export_transactions=transactions_tmp_file is not None)
         job.run()
+
+        logger.info('Moving blocks to output directory {blocks_file}'.format(
+            blocks_file=blocks_output_file,
+        ))
+        shutil.move(blocks_tmp_file, blocks_output_file)
 
         # # # token_transfers # # #
 
         token_transfers_file = None
         if is_log_filter_supported(provider_uri):
+            token_transfers_tmp_dir = '{output_dir}/.tmp/token_transfers{partition_dir}'.format(
+                output_dir=output_dir,
+                partition_dir=partition_dir,
+            )
+            os.makedirs(os.path.dirname(token_transfers_tmp_dir), exist_ok=True)
+
             token_transfers_output_dir = '{output_dir}/token_transfers{partition_dir}'.format(
                 output_dir=output_dir,
                 partition_dir=partition_dir,
             )
             os.makedirs(os.path.dirname(token_transfers_output_dir), exist_ok=True)
 
-            token_transfers_file = '{token_transfers_output_dir}/token_transfers_{file_name_suffix}.csv'.format(
+            token_transfers_file_format = '{token_transfers_output_dir}/token_transfers_{file_name_suffix}.csv'
+            token_transfers_tmp_file = token_transfers_file_format.format(
+                token_transfers_output_dir=token_transfers_tmp_dir,
+                file_name_suffix=file_name_suffix,
+            )
+            token_transfers_output_file = token_transfers_file_format.format(
                 token_transfers_output_dir=token_transfers_output_dir,
                 file_name_suffix=file_name_suffix,
             )
+            delete_file(token_transfers_tmp_file)
+
             logger.info('Exporting ERC20 transfers from blocks {block_range} to {token_transfers_file}'.format(
                 block_range=block_range,
-                token_transfers_file=token_transfers_file,
+                token_transfers_file=token_transfers_tmp_file,
             ))
 
             job = ExportTokenTransfersJob(
@@ -147,9 +196,14 @@ def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_s
                 end_block=batch_end_block,
                 batch_size=batch_size,
                 web3=ThreadLocalProxy(lambda: build_web3(get_provider_from_uri(provider_uri))),
-                item_exporter=token_transfers_item_exporter(token_transfers_file),
+                item_exporter=token_transfers_item_exporter(token_transfers_tmp_file),
                 max_workers=max_workers)
             job.run()
+
+            logger.info('Moving token transfers to output directory {token_transfers_file}'.format(
+                token_transfers_file=token_transfers_output_file,
+            ))
+            shutil.move(token_transfers_tmp_file, token_transfers_output_file)
 
         # # # receipts_and_logs # # #
 
@@ -164,9 +218,15 @@ def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_s
             file_name_suffix=file_name_suffix,
         )
         logger.info('Extracting hash column from transaction file {transactions_file}'.format(
-            transactions_file=transactions_file,
+            transactions_file=transactions_tmp_file,
         ))
-        extract_csv_column_unique(transactions_file, transaction_hashes_file, 'hash')
+        extract_csv_column_unique(transactions_tmp_file, transaction_hashes_file, 'hash')
+
+        receipts_tmp_dir = '{output_dir}/.tmp/receipts{partition_dir}'.format(
+            output_dir=output_dir,
+            partition_dir=partition_dir,
+        )
+        os.makedirs(os.path.dirname(receipts_tmp_dir), exist_ok=True)
 
         receipts_output_dir = '{output_dir}/receipts{partition_dir}'.format(
             output_dir=output_dir,
@@ -174,24 +234,44 @@ def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_s
         )
         os.makedirs(os.path.dirname(receipts_output_dir), exist_ok=True)
 
+        logs_tmp_dir = '{output_dir}/.tmp/logs{partition_dir}'.format(
+            output_dir=output_dir,
+            partition_dir=partition_dir,
+        )
+        os.makedirs(os.path.dirname(logs_tmp_dir), exist_ok=True)
+
         logs_output_dir = '{output_dir}/logs{partition_dir}'.format(
             output_dir=output_dir,
             partition_dir=partition_dir,
         )
         os.makedirs(os.path.dirname(logs_output_dir), exist_ok=True)
 
-        receipts_file = '{receipts_output_dir}/receipts_{file_name_suffix}.csv'.format(
+        receipts_file_format = '{receipts_output_dir}/receipts_{file_name_suffix}.csv'
+        receipts_tmp_file = receipts_file_format.format(
+            receipts_output_dir=receipts_tmp_dir,
+            file_name_suffix=file_name_suffix,
+        )
+        receipts_output_file = receipts_file_format.format(
             receipts_output_dir=receipts_output_dir,
             file_name_suffix=file_name_suffix,
         )
-        logs_file = '{logs_output_dir}/logs_{file_name_suffix}.csv'.format(
+        delete_file(receipts_tmp_file)
+
+        logs_file_format = '{logs_output_dir}/logs_{file_name_suffix}.csv'
+        logs_tmp_file = logs_file_format.format(
+            logs_output_dir=logs_tmp_dir,
+            file_name_suffix=file_name_suffix,
+        )
+        logs_output_file = logs_file_format.format(
             logs_output_dir=logs_output_dir,
             file_name_suffix=file_name_suffix,
         )
+        delete_file(logs_tmp_file)
+
         logger.info('Exporting receipts and logs from blocks {block_range} to {receipts_file} and {logs_file}'.format(
             block_range=block_range,
-            receipts_file=receipts_file,
-            logs_file=logs_file,
+            receipts_file=receipts_tmp_file,
+            logs_file=logs_tmp_file,
         ))
 
         with smart_open(transaction_hashes_file, 'r') as transaction_hashes:
@@ -200,10 +280,15 @@ def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_s
                 batch_size=batch_size,
                 batch_web3_provider=ThreadLocalProxy(lambda: get_provider_from_uri(provider_uri, batch=True)),
                 max_workers=max_workers,
-                item_exporter=receipts_and_logs_item_exporter(receipts_file, logs_file),
-                export_receipts=receipts_file is not None,
-                export_logs=logs_file is not None)
+                item_exporter=receipts_and_logs_item_exporter(receipts_tmp_file, logs_tmp_file),
+                export_receipts=receipts_tmp_file is not None,
+                export_logs=logs_tmp_file is not None)
             job.run()
+
+        logger.info('Moving logs to output directory {logs_file}'.format(
+            logs_file=logs_output_file,
+        ))
+        shutil.move(logs_tmp_file, logs_output_file)
 
         # # # contracts # # #
 
@@ -212,9 +297,15 @@ def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_s
             file_name_suffix=file_name_suffix,
         )
         logger.info('Extracting contract_address from receipt file {receipts_file}'.format(
-            receipts_file=receipts_file
+            receipts_file=receipts_tmp_file
         ))
-        extract_csv_column_unique(receipts_file, contract_addresses_file, 'contract_address')
+        extract_csv_column_unique(receipts_tmp_file, contract_addresses_file, 'contract_address')
+
+        contracts_tmp_dir = '{output_dir}/.tmp/contracts{partition_dir}'.format(
+            output_dir=output_dir,
+            partition_dir=partition_dir,
+        )
+        os.makedirs(os.path.dirname(contracts_tmp_dir), exist_ok=True)
 
         contracts_output_dir = '{output_dir}/contracts{partition_dir}'.format(
             output_dir=output_dir,
@@ -222,13 +313,20 @@ def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_s
         )
         os.makedirs(os.path.dirname(contracts_output_dir), exist_ok=True)
 
-        contracts_file = '{contracts_output_dir}/contracts_{file_name_suffix}.csv'.format(
+        contracts_file_template = '{contracts_output_dir}/contracts_{file_name_suffix}.csv'
+        contracts_tmp_file = contracts_file_template.format(
+            contracts_output_dir=contracts_tmp_dir,
+            file_name_suffix=file_name_suffix,
+        )
+        contracts_output_file = '{contracts_output_dir}/contracts_{file_name_suffix}.csv'.format(
             contracts_output_dir=contracts_output_dir,
             file_name_suffix=file_name_suffix,
         )
+        delete_file(contracts_tmp_file)
+
         logger.info('Exporting contracts from blocks {block_range} to {contracts_file}'.format(
             block_range=block_range,
-            contracts_file=contracts_file,
+            contracts_file=contracts_tmp_file,
         ))
 
         with smart_open(contract_addresses_file, 'r') as contract_addresses_file:
@@ -238,9 +336,19 @@ def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_s
                 contract_addresses_iterable=contract_addresses,
                 batch_size=batch_size,
                 batch_web3_provider=ThreadLocalProxy(lambda: get_provider_from_uri(provider_uri, batch=True)),
-                item_exporter=contracts_item_exporter(contracts_file),
+                item_exporter=contracts_item_exporter(contracts_tmp_file),
                 max_workers=max_workers)
             job.run()
+
+        logger.info('Moving contracts to output directory {contracts_file}'.format(
+            contracts_file=contracts_output_file,
+        ))
+        shutil.move(contracts_tmp_file, contracts_output_file)
+
+        logger.info('Moving receipts to output directory {receipts_file}'.format(
+            receipts_file=receipts_output_file,
+        ))
+        shutil.move(receipts_tmp_file, receipts_output_file)
 
         # # # tokens # # #
 
@@ -254,28 +362,51 @@ def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_s
             ))
             extract_csv_column_unique(token_transfers_file, token_addresses_file, 'token_address')
 
+            tokens_tmp_dir = '{output_dir}/.tmp/tokens{partition_dir}'.format(
+                output_dir=output_dir,
+                partition_dir=partition_dir,
+            )
+            os.makedirs(os.path.dirname(tokens_tmp_dir), exist_ok=True)
+
             tokens_output_dir = '{output_dir}/tokens{partition_dir}'.format(
                 output_dir=output_dir,
                 partition_dir=partition_dir,
             )
             os.makedirs(os.path.dirname(tokens_output_dir), exist_ok=True)
 
-            tokens_file = '{tokens_output_dir}/tokens_{file_name_suffix}.csv'.format(
+            tokens_file_template = '{tokens_output_dir}/tokens_{file_name_suffix}.csv'
+            tokens_tmp_file = tokens_file_template.format(
+                tokens_output_dir=tokens_tmp_dir,
+                file_name_suffix=file_name_suffix,
+            )
+            tokens_output_file = tokens_file_template.format(
                 tokens_output_dir=tokens_output_dir,
                 file_name_suffix=file_name_suffix,
             )
+            delete_file(tokens_tmp_file)
+
             logger.info('Exporting tokens from blocks {block_range} to {tokens_file}'.format(
                 block_range=block_range,
-                tokens_file=tokens_file,
+                tokens_file=tokens_tmp_file,
             ))
 
             with smart_open(token_addresses_file, 'r') as token_addresses:
                 job = ExportTokensJob(
                     token_addresses_iterable=(token_address.strip() for token_address in token_addresses),
                     web3=ThreadLocalProxy(lambda: build_web3(get_provider_from_uri(provider_uri))),
-                    item_exporter=tokens_item_exporter(tokens_file),
+                    item_exporter=tokens_item_exporter(tokens_tmp_file),
                     max_workers=max_workers)
                 job.run()
+
+            logger.info('Moving tokens to output directory {tokens_file}'.format(
+                tokens_file=tokens_output_file,
+            ))
+            shutil.move(tokens_tmp_file, tokens_output_file)
+
+        logger.info('Moving transactions to output directory {transactions_file}'.format(
+            transactions_file=transactions_output_file,
+        ))
+        shutil.move(transactions_tmp_file, transactions_output_file)
 
         # # # finish # # #
         shutil.rmtree(os.path.dirname(cache_output_dir))

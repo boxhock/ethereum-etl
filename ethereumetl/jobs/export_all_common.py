@@ -99,7 +99,6 @@ def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_s
             output_dir=output_dir,
             partition_dir=partition_dir,
         )
-        Path(os.path.dirname(blocks_output_dir)).mkdir(parents=True, exist_ok=True)
 
         transactions_tmp_dir = '{output_dir}/.tmp/transactions{partition_dir}'.format(
             output_dir=output_dir,
@@ -158,6 +157,7 @@ def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_s
         logger.info('Moving blocks to output directory {blocks_file}'.format(
             blocks_file=blocks_output_file,
         ))
+        Path(os.path.dirname(blocks_output_file)).mkdir(parents=True, exist_ok=True)
         shutil.move(blocks_tmp_file, blocks_output_file)
 
         # # # token_transfers # # #
@@ -204,6 +204,7 @@ def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_s
             logger.info('Moving token transfers to output directory {token_transfers_file}'.format(
                 token_transfers_file=token_transfers_output_file,
             ))
+            Path(os.path.dirname(token_transfers_output_file)).mkdir(parents=True, exist_ok=True)
             shutil.move(token_transfers_tmp_file, token_transfers_output_file)
 
         # # # receipts_and_logs # # #
@@ -289,6 +290,7 @@ def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_s
         logger.info('Moving logs to output directory {logs_file}'.format(
             logs_file=logs_output_file,
         ))
+        Path(os.path.dirname(logs_output_file)).mkdir(parents=True, exist_ok=True)
         shutil.move(logs_tmp_file, logs_output_file)
 
         # # # contracts # # #
@@ -344,11 +346,13 @@ def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_s
         logger.info('Moving contracts to output directory {contracts_file}'.format(
             contracts_file=contracts_output_file,
         ))
+        Path(os.path.dirname(contracts_output_file)).mkdir(parents=True, exist_ok=True)
         shutil.move(contracts_tmp_file, contracts_output_file)
 
         logger.info('Moving receipts to output directory {receipts_file}'.format(
             receipts_file=receipts_output_file,
         ))
+        Path(os.path.dirname(receipts_output_file)).mkdir(parents=True, exist_ok=True)
         shutil.move(receipts_tmp_file, receipts_output_file)
 
         # # # tokens # # #
@@ -402,11 +406,13 @@ def export_all_common(partitions, output_dir, provider_uri, max_workers, batch_s
             logger.info('Moving tokens to output directory {tokens_file}'.format(
                 tokens_file=tokens_output_file,
             ))
+            Path(os.path.dirname(tokens_output_file)).mkdir(parents=True, exist_ok=True)
             shutil.move(tokens_tmp_file, tokens_output_file)
 
         logger.info('Moving transactions to output directory {transactions_file}'.format(
             transactions_file=transactions_output_file,
         ))
+        Path(os.path.dirname(transactions_output_file)).mkdir(parents=True, exist_ok=True)
         shutil.move(transactions_tmp_file, transactions_output_file)
 
         # # # finish # # #
